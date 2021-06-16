@@ -55,6 +55,30 @@ router.post("", (req, res) => {
         })
 })
 
+router.put("/:id", (req, res) => {
+    const articleId = req.params.id
+
+    Article.update(req.body, {where: {id: articleId}})
+        .then(updatedArticle => {
+            Article.findOne({
+                where: {id: articleId},
+                include: {
+                    model: User
+                }
+            })
+                .then(article => {
+                    return res.json(article)
+                })
+                .catch(err => {
+                    return res.json(err)
+                })
+        })
+        .catch(err => {
+            res.json(err)
+        })
+})
+
+
 router.get("", (req, res) => {
     const title = req.query.title
     const topic = req.query.topic
@@ -93,22 +117,6 @@ router.get("/:id", (req, res) => {
     })
         .then(article => {
             res.json(article)
-        })
-        .catch(err => {
-            res.json(err)
-        })
-})
-
-
-router.put("/:id", (req, res) => {
-    const articleId = req.params.id
-
-    Article.update(req.body, {where: {id: articleId}})
-        .then(updatedArticle => {
-            Article.findByPk(articleId)
-                .then(article => {
-                    return res.json(article)
-                })
         })
         .catch(err => {
             res.json(err)
