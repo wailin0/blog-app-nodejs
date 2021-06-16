@@ -13,11 +13,14 @@ app.use("/api/user", userController)
 app.use("/api/article", articleController)
 
 
+const port = process.env.PORT || 3000;
+
+
 sequelize
     .sync()
     .then(result => {
         console.log(result)
-        app.listen(3000)
+        app.listen(port)
     })
     .catch(err => {
         console.log(err)
