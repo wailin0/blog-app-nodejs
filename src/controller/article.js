@@ -3,6 +3,7 @@ const Article = require("../model/Article")
 const User = require("../model/User")
 const jwt = require("jsonwebtoken")
 const config = require("../config/config")
+const {authenticateUserToken} = require("../utils/userAuthMiddleware");
 const {Op} = require("sequelize")
 const {topics} = require("../config/topics.js")
 
@@ -23,9 +24,8 @@ router.get("/popular-articles", (req, res) => {
         })
 })
 
-router.post("", (req, res) => {
-    const token = req.headers.authorization
-    const decoded = jwt.verify(token, config.JWT_SECRET)
+router.post("", authenticateUserToken, (req, res) => {
+    const userId = req.user.id
     const {title, content, topic, photo} = req.body
 
     const article = new Article({
@@ -33,7 +33,7 @@ router.post("", (req, res) => {
         content,
         topic,
         photo,
-        userId: decoded.id
+        userId
     })
     article.save()
         .then(article => {
@@ -55,7 +55,7 @@ router.post("", (req, res) => {
         })
 })
 
-router.put("/:id", (req, res) => {
+router.put("/:id", authenticateUserToken, (req, res) => {
     const articleId = req.params.id
 
     Article.update(req.body, {where: {id: articleId}})
@@ -123,7 +123,7 @@ router.get("/:id", (req, res) => {
         })
 })
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", authenticateUserToken, (req, res) => {
     const articleId = req.params.id
 
     Article.destroy({where: {id: articleId}})

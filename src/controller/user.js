@@ -3,15 +3,16 @@ const User = require("../model/User")
 const jwt = require("jsonwebtoken")
 const Article = require("../model/Article")
 const Follow = require("../model/Follow")
+const {JWT_SECRET} = require("../config/config");
+const {authenticateUserToken} = require("../utils/userAuthMiddleware");
 
-router.get("/:id/checkfollow", (req, res) => {
+router.get("/:id/checkfollow", authenticateUserToken,  (req, res) => {
     const followedId = req.params.id
-    const token = req.headers.authorization
-    const decoded = jwt.verify(token, JWT_SECRET)
+    const userId = req.user.id
 
     Follow.findOne({
         where: {
-            followerId: decoded.id,
+            followerId: userId,
             followedId
         }
     })
@@ -26,13 +27,12 @@ router.get("/:id/checkfollow", (req, res) => {
 })
 
 
-router.put("", (req, res) => {
-    const token = req.headers.authorization
-    const decoded = jwt.verify(token, JWT_SECRET)
+router.put("",  authenticateUserToken,(req, res) => {
+    const userId = req.user.id
 
-    User.update(req.body, {where: {id: decoded.id}})
+    User.update(req.body, {where: {id: userId}})
         .then(updatedUser => {
-            User.findByPk(decoded.id)
+            User.findByPk(userId)
                 .then(user => {
                     return res.json(user)
                 })
@@ -41,19 +41,6 @@ router.put("", (req, res) => {
             res.json(err)
         })
 })
-
-router.delete("/:id", (req, res) => {
-    const articleId = req.params.id
-
-    Article.destroy({where: {id: articleId}})
-        .then(() => {
-            res.json({"message": "delete success"})
-        })
-        .catch(err => {
-            res.json(err)
-        })
-})
-
 
 router.post("/checkemail", (req, res) => {
     const {email} = req.body
@@ -70,7 +57,7 @@ router.post("/checkemail", (req, res) => {
         })
 })
 
-router.get("/topten-users", (req, res) => {
+router.get("/topten-users",  authenticateUserToken, (req, res) => {
     User.findAll({
         limit: 10,
         order: [['fame', 'DESC']]
@@ -83,14 +70,13 @@ router.get("/topten-users", (req, res) => {
         })
 })
 
-router.post("/follow", (req, res) => {
+router.post("/follow",  authenticateUserToken, (req, res) => {
     const {followedId} = req.body
-    const token = req.headers.authorization
-    const decoded = jwt.verify(token, JWT_SECRET)
+    const userId = req.user.id
 
     const following = new Follow({
         followedId,
-        followerId: decoded.id
+        followerId: userId
     })
 
     following.save()
@@ -114,7 +100,7 @@ router.post("/follow", (req, res) => {
         })
 })
 
-router.get("/:id/following", (req, res) => {
+router.get("/:id/following",  authenticateUserToken,(req, res) => {
     const followerId = req.params.id
 
     Follow.findAll({
@@ -133,7 +119,7 @@ router.get("/:id/following", (req, res) => {
         })
 })
 
-router.get("/:id/follower", (req, res) => {
+router.get("/:id/follower",  authenticateUserToken,(req, res) => {
     const followedId = req.params.id
 
     Follow.findAll({
@@ -152,7 +138,7 @@ router.get("/:id/follower", (req, res) => {
         })
 })
 
-router.get("/:id/article", (req, res) => {
+router.get("/:id/article",  authenticateUserToken,(req, res) => {
     const userId = req.params.id
     Article.findAll({
         where: {userId},
@@ -166,20 +152,8 @@ router.get("/:id/article", (req, res) => {
         })
 })
 
-router.get("/:id/count", async (req, res) => {
-    const userId = req.params.id
 
-    const userArticleCount = await Article.count({where: {userId: userId}})
-    const userFollowerCount = await Follow.count({where: {followedId: userId}})
-    const userFollowingCount = await Follow.count({where: {followerId: userId}})
-
-    console.log(userFollowingCount)
-
-
-})
-
-
-router.get("/:id", async (req, res) => {
+router.get("/:id",  authenticateUserToken,async (req, res) => {
     const userId = req.params.id
 
     const articleCount = await Article.count({where: {userId: userId}})
@@ -201,36 +175,8 @@ router.get("/:id", async (req, res) => {
         })
 })
 
-
-router.get("", async (req, res) => {
-    const token = req.headers.authorization
-    const decoded = jwt.verify(token, JWT_SECRET)
-
-
-    const articleCount = await Article.count({where: {userId: decoded.id}})
-    const followerCount = await Follow.count({where: {followedId: decoded.id}})
-    const followingCount = await Follow.count({where: {followerId: decoded.id}})
-
-    User.findByPk(decoded.id)
-        .then(user => {
-            const updatedObject = {
-                ...user.dataValues,
-                articleCount,
-                followingCount,
-                followerCount
-            }
-            return res.json(updatedObject)
-        })
-        .catch(err => {
-            return res.json(err)
-        })
-})
-
-
 router.post("/signup", (req, res) => {
     const {name, email, password, headline, aboutMe} = req.body
-
-    console.log(req.body)
 
     const newUser = new User({
         name,
@@ -260,9 +206,6 @@ router.post("/signup", (req, res) => {
             res.status(500).json(err)
         })
 })
-
-
-const JWT_SECRET = "secret"
 
 router.post("/signin", (req, res) => {
     const {email, password} = req.body
