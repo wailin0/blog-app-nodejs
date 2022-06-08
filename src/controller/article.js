@@ -26,12 +26,12 @@ router.get("/popular-articles", (req, res) => {
 
 router.post("", authenticateUserToken, (req, res) => {
     const userId = req.user.id
-    const {title, content, topic, photo} = req.body
+    const {title, content, topicId, photo} = req.body
 
     const article = new Article({
         title,
         content,
-        topic,
+        topicId,
         photo,
         userId
     })

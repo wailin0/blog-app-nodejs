@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
+const User = require("../model/User");
 const {JWT_SECRET} = require("../config/config");
-const User = require("../models/user");
 
 const authenticateUserToken = async (req, res, next) => {
     const authHeader = req.headers['authorization']

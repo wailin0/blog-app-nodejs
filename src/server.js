@@ -17,7 +17,7 @@ const port = process.env.PORT || 3000;
 
 
 sequelize
-    .sync()
+    .sync({force: true})
     .then(result => {
         console.log(result)
         app.listen(port)
