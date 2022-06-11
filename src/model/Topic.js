@@ -5,7 +5,8 @@ const Article = require("./Article");
 const Topic = sequelize.define('topic', {
     title: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
+        unique: true
     },
     image_url: {
         type: Sequelize.STRING,

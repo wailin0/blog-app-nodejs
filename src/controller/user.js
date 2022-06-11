@@ -6,7 +6,7 @@ const Follow = require("../model/Follow")
 const {JWT_SECRET} = require("../config/config");
 const {authenticateUserToken} = require("../utils/userAuthMiddleware");
 
-router.get("/:id/checkfollow", authenticateUserToken,  (req, res) => {
+router.get("/:id/checkfollow", authenticateUserToken, (req, res) => {
     const followedId = req.params.id
     const userId = req.user.id
 
@@ -27,7 +27,7 @@ router.get("/:id/checkfollow", authenticateUserToken,  (req, res) => {
 })
 
 
-router.put("",  authenticateUserToken,(req, res) => {
+router.put("", authenticateUserToken, (req, res) => {
     const userId = req.user.id
 
     User.update(req.body, {where: {id: userId}})
@@ -49,15 +49,15 @@ router.post("/checkemail", (req, res) => {
     })
         .then(user => {
             if (user) {
-                return res.json({"error": "email already in used"})
-            } else return res.json({"message": "email not in used"})
+                return res.json(true)
+            } else return res.json(false)
         })
         .catch(err => {
             return res.json(err)
         })
 })
 
-router.get("/topten-users",  authenticateUserToken, (req, res) => {
+router.get("/topten-users", authenticateUserToken, (req, res) => {
     User.findAll({
         limit: 10,
         order: [['fame', 'DESC']]
@@ -70,7 +70,7 @@ router.get("/topten-users",  authenticateUserToken, (req, res) => {
         })
 })
 
-router.post("/follow",  authenticateUserToken, (req, res) => {
+router.post("/follow", authenticateUserToken, (req, res) => {
     const {followedId} = req.body
     const userId = req.user.id
 
@@ -100,7 +100,7 @@ router.post("/follow",  authenticateUserToken, (req, res) => {
         })
 })
 
-router.get("/:id/following",  authenticateUserToken,(req, res) => {
+router.get("/:id/following", authenticateUserToken, (req, res) => {
     const followerId = req.params.id
 
     Follow.findAll({
@@ -119,7 +119,7 @@ router.get("/:id/following",  authenticateUserToken,(req, res) => {
         })
 })
 
-router.get("/:id/follower",  authenticateUserToken,(req, res) => {
+router.get("/:id/follower", (req, res) => {
     const followedId = req.params.id
 
     Follow.findAll({
@@ -138,7 +138,7 @@ router.get("/:id/follower",  authenticateUserToken,(req, res) => {
         })
 })
 
-router.get("/:id/article",  authenticateUserToken,(req, res) => {
+router.get("/:id/article", (req, res) => {
     const userId = req.params.id
     Article.findAll({
         where: {userId},
@@ -153,8 +153,30 @@ router.get("/:id/article",  authenticateUserToken,(req, res) => {
 })
 
 
-router.get("/:id",  authenticateUserToken,async (req, res) => {
+router.get("/:id", authenticateUserToken, async (req, res) => {
     const userId = req.params.id
+
+    const articleCount = await Article.count({where: {userId: userId}})
+    const followerCount = await Follow.count({where: {followedId: userId}})
+    const followingCount = await Follow.count({where: {followerId: userId}})
+
+    User.findByPk(userId)
+        .then(user => {
+            const updatedObject = {
+                ...user.dataValues,
+                articleCount,
+                followingCount,
+                followerCount
+            }
+            res.json(updatedObject)
+        })
+        .catch(err => {
+            res.json(err)
+        })
+})
+
+router.get("", authenticateUserToken, async (req, res) => {
+    const userId = req.user.id
 
     const articleCount = await Article.count({where: {userId: userId}})
     const followerCount = await Follow.count({where: {followedId: userId}})
@@ -210,20 +232,23 @@ router.post("/signup", (req, res) => {
 router.post("/signin", (req, res) => {
     const {email, password} = req.body
 
+    if (!email || !password) {
+        return res.status(400).json({"message": "fields missing"})
+    }
+
     User.findOne({where: {email: email}})
         .then(user => {
             if (!user) {
-                return res.status(404).json({"message": "Email not found"})
+                return res.status(400).json({"message": "Email not found"})
             } else {
                 if (user.password === password) {
                     const token = jwt.sign({id: user.id}, JWT_SECRET)
                     res.json({token})
                 } else {
-                    res.status(401).json({"message": "Invalid email or password"})
+                    res.status(400).json({"message": "Invalid email or password"})
                 }
             }
         })
-
 })
 
 module.exports = router

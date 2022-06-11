@@ -13,6 +13,6 @@ const Like = sequelize.define('like', {
 })
 
 Like.belongsTo(User, {constraints: true, onDelete: 'CASCADE'})
-Like.belongsTo(Article, {constraints: true, onDelete: 'CASCADE'})
+
 
 module.exports = Like

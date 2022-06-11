@@ -8,9 +8,11 @@ const User = sequelize.define('user', {
     },
     aboutMe: {
         type: Sequelize.STRING,
+        allowNull: false,
     },
     headline: {
         type: Sequelize.STRING,
+        allowNull: false,
     },
     fame: {
         type: Sequelize.INTEGER,
@@ -29,6 +31,10 @@ const User = sequelize.define('user', {
     photo: {
         type: Sequelize.STRING,
         defaultValue: "https://"
+    },
+    disabled: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
     }
 })
 

@@ -12,6 +12,9 @@ const authenticateUserToken = async (req, res, next) => {
         const validatedUser = jwt.verify(accessToken, JWT_SECRET);
 
         const user = await User.findByPk(validatedUser.id)
+        if (!user) {
+            return res.status(403).send("no account found")
+        }
         if (user.disabled) {
             return res.status(403).send("your account is disabled")
         }
