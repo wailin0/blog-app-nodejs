@@ -215,7 +215,7 @@ router.post("/signup", (req, res) => {
             } else {
                 newUser.save()
                     .then(user => {
-                        const token = jwt.sign({id: user.id}, JWT_SECRET)
+                        const token = jwt.sign({id: user.id}, JWT_SECRET, {expiresIn: '10d'});
                         return res.json({token})
                     })
                     .catch(err => {
@@ -242,7 +242,7 @@ router.post("/signin", (req, res) => {
                 return res.status(400).json({"message": "Email not found"})
             } else {
                 if (user.password === password) {
-                    const token = jwt.sign({id: user.id}, JWT_SECRET)
+                    const token = jwt.sign({id: user.id}, JWT_SECRET, {expiresIn: '10d'});
                     res.json({token})
                 } else {
                     res.status(400).json({"message": "Invalid email or password"})
