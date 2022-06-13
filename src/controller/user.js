@@ -70,34 +70,65 @@ router.get("/topten-users", authenticateUserToken, (req, res) => {
         })
 })
 
-router.post("/follow", authenticateUserToken, (req, res) => {
+router.post("/follow", authenticateUserToken, async (req, res) => {
     const {followedId} = req.body
     const userId = req.user.id
 
-    const following = new Follow({
-        followedId,
-        followerId: userId
-    })
+    try {
+        const alreadyFollowed = await Follow.findOne({
+            where: {
+                followedId,
+                followerId: userId
+            }
+        })
+        if (userId == followedId) {
+            return res.status(400).json({message: "cannot follow yourself"})
+        } else if (alreadyFollowed) {
+            return res.status(400).json({message: "already followed"})
+        }
+        const following = new Follow({
+            followedId,
+            followerId: userId
+        })
+        const saved = await following.save()
+        const resp = await Follow.findOne({
+            where: {id: saved.id},
+            include: {
+                model: User,
+                as: 'following'
+            }
+        })
+        return res.json(resp)
+    } catch (e) {
+        return res.status(500).json(e)
+    }
+})
 
-    following.save()
-        .then(user => {
-            Follow.findOne({
-                where: {id: user.id},
-                include: {
-                    model: User,
-                    as: 'following'
-                }
-            })
-                .then(u => {
-                    return res.json(u)
-                })
-                .catch(err => {
-                    console.log(err)
-                })
+router.post("/unfollow", authenticateUserToken, async (req, res) => {
+    const {followedId} = req.body
+    const userId = req.user.id
+
+    try {
+        const alreadyFollowed = await Follow.findOne({
+            where: {
+                followedId,
+                followerId: userId
+            }
         })
-        .catch(err => {
-            console.log(err)
+        if (!alreadyFollowed) {
+            return res.status(400).json({message: "not followed"})
+        }
+        const response = await Follow.destroy({
+            where: {
+                followedId,
+                followerId: userId
+            }
         })
+        if (res)
+            return res.json(response)
+    } catch (e) {
+        return res.status(500).json(e)
+    }
 })
 
 router.get("/:id/following", authenticateUserToken, (req, res) => {
@@ -194,60 +225,6 @@ router.get("", authenticateUserToken, async (req, res) => {
         })
         .catch(err => {
             res.json(err)
-        })
-})
-
-router.post("/signup", (req, res) => {
-    const {name, email, password, headline, aboutMe} = req.body
-
-    const newUser = new User({
-        name,
-        email,
-        password,
-        headline,
-        aboutMe
-    })
-
-    User.findOne({where: {email: email}})
-        .then(user => {
-            if (user) {
-                return res.status(500).json({"error": "email already in used"})
-            } else {
-                newUser.save()
-                    .then(user => {
-                        const token = jwt.sign({id: user.id}, JWT_SECRET, {expiresIn: '10d'});
-                        return res.json({token})
-                    })
-                    .catch(err => {
-                        return res.status(500).json(err)
-                    })
-            }
-        })
-        .catch(err => {
-            console.log(err)
-            res.status(500).json(err)
-        })
-})
-
-router.post("/signin", (req, res) => {
-    const {email, password} = req.body
-
-    if (!email || !password) {
-        return res.status(400).json({"message": "fields missing"})
-    }
-
-    User.findOne({where: {email: email}})
-        .then(user => {
-            if (!user) {
-                return res.status(400).json({"message": "Email not found"})
-            } else {
-                if (user.password === password) {
-                    const token = jwt.sign({id: user.id}, JWT_SECRET, {expiresIn: '10d'});
-                    res.json({token})
-                } else {
-                    res.status(400).json({"message": "Invalid email or password"})
-                }
-            }
         })
 })
 

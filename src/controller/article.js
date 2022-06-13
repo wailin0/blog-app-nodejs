@@ -9,8 +9,11 @@ const {Sequelize} = require("sequelize");
 const {authenticateUserToken} = require("../utils/userAuthMiddleware");
 const {Op} = require("sequelize")
 
-// get popular articles
-router.get("/popular-articles", authenticateUserToken, (req, res) => {
+// get user specific articles
+//to do
+//get articles from followed user
+//sorted most liked articles
+router.get("/recommended", authenticateUserToken, (req, res) => {
     Article.findAll({
         where: {disabled: false},
         order: [['createdAt', 'DESC']]
