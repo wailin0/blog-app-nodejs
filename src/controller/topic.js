@@ -4,7 +4,7 @@ const {authenticateUserToken} = require("../utils/userAuthMiddleware");
 
 router.get("",  authenticateUserToken,(req, res) => {
     Topic.findAll({
-        order: [['createdAt', 'DESC']]
+        order: [['title', 'asc']]
     })
         .then(topics => {
             return res.json(topics)

@@ -1,9 +1,10 @@
 const router = require("express").Router()
 const User = require("../model/User")
-const jwt = require("jsonwebtoken")
 const Article = require("../model/Article")
 const Follow = require("../model/Follow")
-const {JWT_SECRET} = require("../config/config");
+const Topic = require("../model/Topic");
+const Like = require("../model/Like");
+const {Sequelize} = require("sequelize");
 const {authenticateUserToken} = require("../utils/userAuthMiddleware");
 
 router.get("/:id/checkfollow", authenticateUserToken, (req, res) => {
@@ -81,7 +82,7 @@ router.post("/follow", authenticateUserToken, async (req, res) => {
                 followerId: userId
             }
         })
-        if (userId == followedId) {
+        if (userId === followedId) {
             return res.status(400).json({message: "cannot follow yourself"})
         } else if (alreadyFollowed) {
             return res.status(400).json({message: "already followed"})
@@ -169,11 +170,35 @@ router.get("/:id/follower", (req, res) => {
         })
 })
 
-router.get("/:id/article", (req, res) => {
+router.get("/:id/article", authenticateUserToken, async (req, res) => {
     const userId = req.params.id
+    const authUserId = req.user.id
+
+    const query = {}
+
+    if (userId !== authUserId) {
+        query.disabled = false
+    }
+
     Article.findAll({
-        where: {userId},
-        order: [['createdAt', 'DESC']]
+        where: {
+            userId,
+            ...query
+        },
+        order: [['updatedAt', 'DESC']],
+        attributes: {
+            include: [[Sequelize.fn("COUNT", Sequelize.col("likes.id")), "likeCount"]]
+        },
+        include: [
+            {
+                model: Topic
+            },
+            {
+                model: Like,
+                attributes: []
+            }
+        ],
+        group: 'article.id'
     })
         .then(articles => {
             return res.json(articles)

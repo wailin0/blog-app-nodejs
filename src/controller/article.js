@@ -4,7 +4,6 @@ const User = require("../model/User")
 const Topic = require("../model/Topic");
 const Like = require("../model/Like");
 const sequelize = require("../database");
-const {Model} = require("sequelize");
 const {Sequelize} = require("sequelize");
 const {authenticateUserToken} = require("../utils/userAuthMiddleware");
 const {Op} = require("sequelize")
@@ -16,7 +15,20 @@ const {Op} = require("sequelize")
 router.get("/recommended", authenticateUserToken, (req, res) => {
     Article.findAll({
         where: {disabled: false},
-        order: [['createdAt', 'DESC']]
+        attributes: {
+            include: [[Sequelize.fn("COUNT", Sequelize.col("likes.id")), "likeCount"]]
+        },
+        include: [
+            {
+                model: Topic
+            },
+            {
+                model: Like,
+                attributes: []
+            }
+        ],
+        order: [['createdAt', 'DESC']],
+        group: 'article.id'
     })
         .then(articles => {
             return res.json(articles)
@@ -62,7 +74,13 @@ router.post("", authenticateUserToken, (req, res) => {
 router.put("/:id", authenticateUserToken, (req, res) => {
     const articleId = req.params.id
 
-    Article.update(req.body, {where: {id: articleId}})
+    const {title, content, photo} = req.body
+
+    Article.update({
+        title,
+        content,
+        photo
+    }, {where: {id: articleId}})
         .then(updatedArticle => {
             Article.findOne({
                 where: {id: articleId},
@@ -84,30 +102,34 @@ router.put("/:id", authenticateUserToken, (req, res) => {
 
 // search article
 router.get("", authenticateUserToken, (req, res) => {
-    const title = req.query.title
-    const topic = req.query.topic
-    const limit = req.query.limit
-
-    const query = {}
-
-    if (title) {
-        query.title = {
-            [Op.like]: `%${title}%`
-        }
-    }
-    if (topic) {
-        query.topic = topic
-    }
+    const {title, topic, limit} = req.query
 
     Article.findAll({
-        limit: Number(limit),
+        // limit: Number(limit),
         where: {
-            ...query,
+            title: {
+                [Op.like]: `%${title}%`
+            },
             disabled: false
         },
-        include: {
-            model: Topic
+        attributes: {
+            include: [[Sequelize.fn("COUNT", Sequelize.col("likes.id")), "likeCount"]]
         },
+        include: [
+            {
+                model: Topic,
+                where: {
+                    title: {
+                        [Op.like]: `%${topic}%`
+                    }
+                }
+            },
+            {
+                model: Like,
+                attributes: []
+            }
+        ],
+        group: 'article.id',
         order: [['createdAt', 'DESC']]
     })
         .then(articles => {
@@ -119,21 +141,39 @@ router.get("", authenticateUserToken, (req, res) => {
 })
 
 // get single article
-router.get("/:id", authenticateUserToken, (req, res) => {
+router.get("/:id", authenticateUserToken, async (req, res) => {
     const articleId = req.params.id
+    const userId = req.user.id
 
-    Article.findOne({
-        where: {id: articleId},
-        include: {
-            model: User
-        }
-    })
-        .then(article => {
+    try {
+        const article = await Article.findOne({
+            where: {
+                id: articleId,
+            },
+            attributes: {
+                include: [[Sequelize.fn("COUNT", Sequelize.col("likes.id")), "likeCount"]]
+            },
+            include: [
+                {
+                    model: User
+                },
+                {
+                    model: Like,
+                    attributes: []
+                }
+            ],
+
+        })
+        if (article && userId === article.user.id) {
             return res.json(article)
-        })
-        .catch(err => {
-            return res.status(500).json(err)
-        })
+        } else if (article && !article.disabled) {
+            return res.json(article)
+        } else {
+            return res.json(null)
+        }
+    } catch (e) {
+        return res.status(500).json(e)
+    }
 })
 
 
@@ -168,23 +208,6 @@ router.post("/:id/like", authenticateUserToken, async (req, res) => {
             userId
         })
         return res.status(201).json(createdLike)
-    } catch (e) {
-        return res.status(500).json(e)
-    }
-})
-
-// unlike a article
-router.delete("/:id/unlike", authenticateUserToken, async (req, res) => {
-    const articleId = req.params.id
-    const userId = req.user.id
-    try {
-        await Like.destroy({
-            where: {
-                userId,
-                articleId
-            }
-        })
-        return res.sendStatus(200)
     } catch (e) {
         return res.status(500).json(e)
     }

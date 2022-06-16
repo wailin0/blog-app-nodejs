@@ -1,6 +1,5 @@
 const Sequelize = require("sequelize")
 const sequelize = require("../database")
-const Article = require("./Article");
 
 const Topic = sequelize.define('topic', {
     title: {

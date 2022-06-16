@@ -34,13 +34,7 @@ router.get("/user", authenticateUserToken, async (req, res) => {
 router.post("/signup", (req, res) => {
     const {name, email, password, headline, aboutMe} = req.body
 
-    const newUser = new User({
-        name,
-        email,
-        password,
-        headline,
-        aboutMe
-    })
+    const newUser = new User(req.body)
 
     User.findOne({where: {email: email}})
         .then(user => {
@@ -151,20 +145,25 @@ router.post("/reset", async (req, res) => {
     if (!email || !code || !newPassword) {
         return res.status(400).json({"message": "fields missing"})
     }
-
-    User.findOne({where: {email: email}})
-        .then(user => {
-            if (!user) {
-                return res.status(400).json({"message": "invalid email or password"})
-            } else {
-                if (user.password === password) {
-                    const token = jwt.sign({id: user.id}, JWT_SECRET, {expiresIn: '10d'});
-                    res.json({token})
-                } else {
-                    res.status(400).json({"message": "invalid email or password"})
+    try {
+        const response = await Code.findOne({
+            where: {
+                email, code, used: false,
+                expiredAt: {
+                    [Op.gt]: new Date(Date.now()),
                 }
             }
         })
+        if (response) {
+            await User.update({password: newPassword}, {where: {email}})
+            await Code.update({used: true}, {where: {code, email}})
+            return res.json({"message": "password reset successful"})
+        } else {
+            return res.status(400).json({"message": "error resetting password"})
+        }
+    } catch (e) {
+        return res.status(500).json(e)
+    }
 })
 
 module.exports = router
